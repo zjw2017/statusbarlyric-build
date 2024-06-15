@@ -1,0 +1,92 @@
+name: Status Bar Lyric - artificial
+on:
+  workflow_dispatch:
+    inputs:
+      ORIGIN_URL:
+        description: "底包的下载地址"
+        required: true
+        type: string
+jobs:
+  status_bar_lyric:
+    name: Status Bar Lyric
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出仓库文件
+        uses: actions/checkout@v4.1.7
+      - name: 准备环境
+        run: |
+          sudo apt-get install aria2 p7zip-full unzip
+          unzip -o -q -P ${{ secrets.PASSWORD }} miui_status_bar_lyric.zip -d "$GITHUB_WORKSPACE"
+      - name: 下载系统包
+        run: |
+          ORIGIN_URL="${ORIGIN_URL/http:\/\/cdnorg.d.miui.com/https:\/\/bkt-sgp-miui-ota-update-alisgp.oss-ap-southeast-1.aliyuncs.com}"
+          echo "ORIGIN_URL=$ORIGIN_URL" >> $GITHUB_ENV
+          aria2c -x16 -j$(nproc) -U "Mozilla/5.0" -d "$GITHUB_WORKSPACE" "$ORIGIN_URL"
+        env:
+          ORIGIN_URL: ${{ inputs.ORIGIN_URL }}
+      - name: 提取 Settings & MiuiSystemUI
+        run: |
+          ORIGIN_ZIP_NAME=$(echo $ORIGIN_URL | sed 's/.*\(miui_.*\.zip\).*/\1/')
+          sudo chmod -R 777 "$GITHUB_WORKSPACE"/bin
+          mkdir -p "$GITHUB_WORKSPACE"/payload
+          mkdir -p "$GITHUB_WORKSPACE"/images
+          7z x "$GITHUB_WORKSPACE"/"$ORIGIN_ZIP_NAME" -o"$GITHUB_WORKSPACE"/payload payload.bin
+          "$GITHUB_WORKSPACE"/bin/payload-dumper-go -o "$GITHUB_WORKSPACE"/images/ -p system_ext "$GITHUB_WORKSPACE"/payload/payload.bin >/dev/null
+          rm -rf "$GITHUB_WORKSPACE"/payload
+          cd "$GITHUB_WORKSPACE"/images && "$GITHUB_WORKSPACE"/bin/extract.erofs -i "$GITHUB_WORKSPACE"/images/system_ext.img -x >/dev/null && cd "$GITHUB_WORKSPACE"
+          rm -rf "$GITHUB_WORKSPACE"/bin
+          rm -rf "$GITHUB_WORKSPACE"/images/system_ext.img "$GITHUB_WORKSPACE"/"$ORIGIN_ZIP_NAME"
+          rm -rf "$GITHUB_WORKSPACE"/module_src/system/system_ext/priv-app/MiuiSystemUI/placeholder
+          rm -rf "$GITHUB_WORKSPACE"/module_src/system/system_ext/priv-app/Settings/placeholder
+      - name: 构建 状态栏歌词3.2.0
+        run: |
+          cp -rf "$GITHUB_WORKSPACE"/images/system_ext/priv-app/MiuiSystemUI/MiuiSystemUI.apk "$GITHUB_WORKSPACE"/miui_status_bar_lyric
+          cp -rf "$GITHUB_WORKSPACE"/images/system_ext/priv-app/Settings/Settings.apk "$GITHUB_WORKSPACE"/miui_status_bar_lyric
+          sudo rm -rf "$GITHUB_WORKSPACE"/images
+          bash "$GITHUB_WORKSPACE"/miui_status_bar_lyric/run.sh
+          cp -rf "$GITHUB_WORKSPACE"/miui_status_bar_lyric/MiuiSystemUI_out.apk "$GITHUB_WORKSPACE"/module_src/system/system_ext/priv-app/MiuiSystemUI/MiuiSystemUI.apk
+          cp -rf "$GITHUB_WORKSPACE"/miui_status_bar_lyric/Settings_out.apk "$GITHUB_WORKSPACE"/module_src/system/system_ext/priv-app/Settings/Settings.apk
+      - name: 制作模块
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE"/GithubRelease
+          version=$(echo $ORIGIN_URL | cut -d"/" -f4)
+          versionCode=$(jq -r .versionCode $GITHUB_WORKSPACE/update.json)
+          versionCode=$((versionCode + 1))
+          echo "version=$version" >> "$GITHUB_ENV"
+          echo "versionCode=$versionCode" >> "$GITHUB_ENV"
+          echo "version=$version" >>$GITHUB_WORKSPACE/module_src/module.prop
+          echo "versionCode=$versionCode" >>$GITHUB_WORKSPACE/module_src/module.prop
+          cd $GITHUB_WORKSPACE/module_src
+          zip -q -r StatusBarLyric_sheng_$version.zip *
+          mv $GITHUB_WORKSPACE/module_src/StatusBarLyric_sheng_$version.zip "$GITHUB_WORKSPACE"/GithubRelease
+          cd "$GITHUB_WORKSPACE"
+          touch file.md
+          echo "StatusBarLyric_sheng_$version.zip" > file.md
+      - name: 上传到Github Release
+        uses: ncipollo/release-action@v1.14.0
+        with:
+          artifacts: ${{ github.workspace }}/GithubRelease/*
+          name: "StatusBarLyric For sheng ${{ env.version }}"
+          tag: "${{ env.version }}"
+          bodyFile: "file.md"
+          allowUpdates: true
+          artifactErrorsFailBuild: true
+          makeLatest: true   
+      - name: 更新下载链接
+        run: |
+          git config --global user.email "30484319+zjw2017@users.noreply.github.com"
+          git config --global user.name "柚稚的孩纸"
+          browser_download_url=$(
+            curl -L \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${{ github.token }}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/zjw2017/statusbarlyric-build/releases/tags/$version" | jq -r .assets[].browser_download_url | cut -d'"' -f2
+          )
+          browser_download_url="https://mirror.ghproxy.com/$browser_download_url"
+          jq --arg ver "$version" --argjson verCode "$versionCode" --arg url "$browser_download_url" '.version = $ver | .versionCode = $verCode | .zipUrl = $url' update.json > temp.json && mv temp.json update.json
+          sed -i "s/OS[0-9]\+\.[0-9]\+\.[0-9]\+\.[0-9]\+\.UNXCNXM/$version/g" update.md
+          git add ./update.json ./update.md
+          if git commit -m "同步 Xiaomi Pad 6S Pro $version"; then
+              git push
+          fi
