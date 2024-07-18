@@ -38,3 +38,9 @@ if [ "$device" != "sheng" ]; then
   ui_print "! 当前机型: $device"
   abort "! 目标机型: sheng"
 fi
+
+# odex
+mkdir -p "$MODPATH"/system/system_ext/priv-app/Settings/oat/arm64
+mkdir -p "$MODPATH"/system/system_ext/priv-app/MIUISystemUI/oat/arm64
+dex2oat --dex-file=/system_ext/priv-app/Settings/Settings.apk --compiler-filter=everything --instruction-set=arm64 --oat-file="$MODPATH"/system/system_ext/priv-app/Settings/oat/arm64/Settings.odex
+dex2oat --dex-file=/system_ext/priv-app/MIUISystemUI/MIUISystemUI.apk --compiler-filter=everything --instruction-set=arm64 --oat-file="$MODPATH"/system/system_ext/priv-app/MIUISystemUI/oat/arm64/MIUISystemUI.odex
