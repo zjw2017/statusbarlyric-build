@@ -1,8 +1,9 @@
 name: Status Bar Lyric - auto
 
 on:
-  schedule:
-    - cron: '*/15 * * * *'  # 每 15 分钟执行一次
+  workflow_dispatch:
+  # schedule:
+  #   - cron: '*/15 * * * *'  # 每 15 分钟执行一次
 
 jobs:
   check-version:
