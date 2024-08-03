@@ -21,7 +21,6 @@ else
 fi
 
 rm -rf /data/system/package_cache
-set_perm_recursive "$MODPATH" 0 0 0755 0644 u:object_r:system_file:s0
 
 . "$MODPATH"/util_functions.sh
 previous_mios_version="$(grep_get_prop ro.mi.os.version.incremental)"
@@ -44,3 +43,5 @@ mkdir -p "$MODPATH"/system/system_ext/priv-app/Settings/oat/arm64
 mkdir -p "$MODPATH"/system/system_ext/priv-app/MIUISystemUI/oat/arm64
 dex2oat --dex-file=/system_ext/priv-app/Settings/Settings.apk --compiler-filter=everything --instruction-set=arm64 --oat-file="$MODPATH"/system/system_ext/priv-app/Settings/oat/arm64/Settings.odex
 dex2oat --dex-file=/system_ext/priv-app/MIUISystemUI/MIUISystemUI.apk --compiler-filter=everything --instruction-set=arm64 --oat-file="$MODPATH"/system/system_ext/priv-app/MIUISystemUI/oat/arm64/MIUISystemUI.odex
+
+set_perm_recursive "$MODPATH" 0 0 0755 0644 u:object_r:system_file:s0
