@@ -40,8 +40,8 @@ fi
 
 # odex
 mkdir -p "$MODPATH"/system/system_ext/priv-app/Settings/oat/arm64
-mkdir -p "$MODPATH"/system/system_ext/priv-app/MIUISystemUI/oat/arm64
+mkdir -p "$MODPATH"/system/system_ext/priv-app/MiuiSystemUI/oat/arm64
 dex2oat --dex-file=/system_ext/priv-app/Settings/Settings.apk --compiler-filter=everything --instruction-set=arm64 --oat-file="$MODPATH"/system/system_ext/priv-app/Settings/oat/arm64/Settings.odex
-dex2oat --dex-file=/system_ext/priv-app/MIUISystemUI/MIUISystemUI.apk --compiler-filter=everything --instruction-set=arm64 --oat-file="$MODPATH"/system/system_ext/priv-app/MIUISystemUI/oat/arm64/MIUISystemUI.odex
+dex2oat --dex-file=/system_ext/priv-app/MiuiSystemUI/MiuiSystemUI.apk --compiler-filter=everything --instruction-set=arm64 --oat-file="$MODPATH"/system/system_ext/priv-app/MiuiSystemUI/oat/arm64/MiuiSystemUI.odex
 
 set_perm_recursive "$MODPATH" 0 0 0755 0644 u:object_r:system_file:s0
